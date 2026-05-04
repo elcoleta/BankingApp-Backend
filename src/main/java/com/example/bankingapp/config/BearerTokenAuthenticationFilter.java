@@ -3,7 +3,7 @@ package com.example.bankingapp.config;
 import java.io.IOException;
 import java.util.List;
 
-import com.example.bankingapp.auth.AppUserRepository;
+import com.example.bankingapp.repository.AppUserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,4 +1,4 @@
-package com.example.bankingapp.auth;
+package com.example.bankingapp.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

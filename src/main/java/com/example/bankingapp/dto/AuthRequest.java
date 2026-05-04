@@ -1,4 +1,4 @@
-package com.example.bankingapp.auth;
+package com.example.bankingapp.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

@@ -1,8 +1,13 @@
-package com.example.bankingapp.auth;
+package com.example.bankingapp.service;
 
 import java.security.SecureRandom;
 import java.util.Base64;
 
+import com.example.bankingapp.dto.AuthRequest;
+import com.example.bankingapp.dto.AuthResponse;
+import com.example.bankingapp.exception.AuthException;
+import com.example.bankingapp.model.AppUser;
+import com.example.bankingapp.repository.AppUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
