@@ -1,4 +1,4 @@
-package com.example.bankingapp.auth;
+package com.example.bankingapp.exception;
 
 public class AuthException extends RuntimeException {
 

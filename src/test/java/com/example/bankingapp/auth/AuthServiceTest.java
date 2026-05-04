@@ -8,6 +8,12 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 
+import com.example.bankingapp.dto.AuthRequest;
+import com.example.bankingapp.dto.AuthResponse;
+import com.example.bankingapp.exception.AuthException;
+import com.example.bankingapp.model.AppUser;
+import com.example.bankingapp.repository.AppUserRepository;
+import com.example.bankingapp.service.AuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;

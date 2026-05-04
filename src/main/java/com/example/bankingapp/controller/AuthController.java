@@ -1,8 +1,13 @@
-package com.example.bankingapp.auth;
+package com.example.bankingapp.controller;
 
 import java.security.Principal;
 import java.util.Map;
 
+import com.example.bankingapp.dto.ApiError;
+import com.example.bankingapp.dto.AuthRequest;
+import com.example.bankingapp.dto.AuthResponse;
+import com.example.bankingapp.exception.AuthException;
+import com.example.bankingapp.service.AuthService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;

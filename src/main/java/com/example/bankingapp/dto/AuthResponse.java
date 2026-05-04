@@ -1,4 +1,4 @@
-package com.example.bankingapp.auth;
+package com.example.bankingapp.dto;
 
 public record AuthResponse(String token, String username) {
 }
