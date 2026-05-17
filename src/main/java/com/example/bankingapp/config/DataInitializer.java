@@ -2,6 +2,7 @@ package com.example.bankingapp.config;
 
 import com.example.bankingapp.model.Account;
 import com.example.bankingapp.model.AppUser;
+import com.example.bankingapp.model.Role;
 import com.example.bankingapp.model.Transaction;
 import com.example.bankingapp.repository.AccountRepository;
 import com.example.bankingapp.repository.AppUserRepository;
@@ -40,8 +41,12 @@ public class DataInitializer implements CommandLineRunner {
         if (userRepository.count() > 0) return;
 
         // Create test customer
-        AppUser customer = new AppUser("achraf", passwordEncoder.encode("password123"));
+        AppUser customer = new AppUser("achraf", passwordEncoder.encode("password123"), Role.CUSTOMER);
         userRepository.save(customer);
+
+        // Create employee user
+        AppUser employee = new AppUser("employee", passwordEncoder.encode("password123"), Role.EMPLOYEE);
+        userRepository.save(employee);
 
         // Create checking account for customer
         accountRepository.save(new Account(
@@ -82,6 +87,6 @@ public class DataInitializer implements CommandLineRunner {
                 "NL91INHO0417164301", "NL20INGB0001234567",
                 150.00, LocalDateTime.now().minusDays(7), "Subscription"));
 
-        System.out.println("✓ Test data loaded: user 'achraf' with 2 accounts and 4 transactions");
+        System.out.println("✓ Test data loaded: users 'achraf' (CUSTOMER) and 'employee' (EMPLOYEE) with 2 accounts and 4 transactions");
     }
 }

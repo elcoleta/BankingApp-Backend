@@ -3,7 +3,8 @@ package com.example.bankingapp.config;
 import java.io.IOException;
 import java.util.List;
 
-import com.example.bankingapp.repository.AppUserRepository;
+import com.example.bankingapp.service.JwtUtil;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,13 +16,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * Validates the Bearer JWT on every request.
+ * Extracts username and role from the token claims and sets the Spring Security context.
+ * No database lookup is performed — the token is self-contained.
+ */
 @Component
 public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
 
-    private final AppUserRepository userRepository;
+    private final JwtUtil jwtUtil;
 
-    public BearerTokenAuthenticationFilter(AppUserRepository userRepository) {
-        this.userRepository = userRepository;
+    public BearerTokenAuthenticationFilter(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
     }
 
     @Override
@@ -34,14 +40,19 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
 
         if (authorization != null && authorization.startsWith("Bearer ")) {
             String token = authorization.substring(7);
-            userRepository.findByToken(token).ifPresent(user -> {
+            try {
+                String username = jwtUtil.extractUsername(token);
+                String role = jwtUtil.extractRole(token);
+
                 var authentication = new UsernamePasswordAuthenticationToken(
-                        user.getUsername(),
+                        username,
                         null,
-                        List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
                 );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            });
+            } catch (JwtException e) {
+                // Invalid or expired token — leave context unauthenticated
+            }
         }
 
         filterChain.doFilter(request, response);

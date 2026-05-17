@@ -1,12 +1,10 @@
 package com.example.bankingapp.service;
 
-import java.security.SecureRandom;
-import java.util.Base64;
-
 import com.example.bankingapp.dto.AuthRequest;
 import com.example.bankingapp.dto.AuthResponse;
 import com.example.bankingapp.exception.AuthException;
 import com.example.bankingapp.model.AppUser;
+import com.example.bankingapp.model.Role;
 import com.example.bankingapp.repository.AppUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,11 +15,14 @@ public class AuthService {
 
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final JwtUtil jwtUtil;
 
-    public AuthService(AppUserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(AppUserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
     }
 
     @Transactional
@@ -31,11 +32,12 @@ public class AuthService {
             throw new AuthException("Username is already taken");
         }
 
-        AppUser user = new AppUser(username, passwordEncoder.encode(request.password()));
-        user.setToken(generateToken());
-        AppUser savedUser = userRepository.save(user);
+        // New registrations are CUSTOMER by default
+        AppUser user = new AppUser(username, passwordEncoder.encode(request.password()), Role.CUSTOMER);
+        userRepository.save(user);
 
-        return new AuthResponse(savedUser.getToken(), savedUser.getUsername());
+        String token = jwtUtil.generateToken(user.getUsername(), user.getRole().name());
+        return new AuthResponse(token, user.getUsername(), user.getRole().name());
     }
 
     @Transactional
@@ -47,13 +49,7 @@ public class AuthService {
             throw new AuthException("Invalid username or password");
         }
 
-        user.setToken(generateToken());
-        return new AuthResponse(user.getToken(), user.getUsername());
-    }
-
-    private String generateToken() {
-        byte[] bytes = new byte[32];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        String token = jwtUtil.generateToken(user.getUsername(), user.getRole().name());
+        return new AuthResponse(token, user.getUsername(), user.getRole().name());
     }
 }
