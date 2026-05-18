@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.bankingapp.dto.AuthRequest;
 import com.example.bankingapp.dto.AuthResponse;
+import com.example.bankingapp.dto.RegisterRequest;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -20,7 +21,7 @@ public class AuthStepDefinitions {
     @Autowired
     private TestRestTemplate restTemplate;
 
-    private String username;
+    private String email;
     private String password;
     private String latestToken;
     private int latestStatus;
@@ -29,34 +30,34 @@ public class AuthStepDefinitions {
 
     @Given("a unique user with password {string}")
     public void aUniqueUserWithPassword(String password) {
-        this.username = "functional-user-" + System.nanoTime();
+        this.email = "test-" + System.nanoTime() + "@example.com";
         this.password = password;
     }
 
     @When("the user registers")
     public void theUserRegisters() {
-        ResponseEntity<AuthResponse> response = restTemplate.postForEntity(
+        ResponseEntity<Void> response = restTemplate.postForEntity(
                 "/auth/register",
-                new AuthRequest(username, password),
-                AuthResponse.class
+                new RegisterRequest("Test", "User", email, "123456789", "+31600000000", password),
+                Void.class
         );
         latestStatus = response.getStatusCode().value();
-        latestAuthResponse = response.getBody();
+        latestAuthResponse = null;
         latestProfileResponse = null;
-        latestToken = latestAuthResponse.token();
+        latestToken = null;
     }
 
     @When("the user logs in")
     public void theUserLogsIn() {
         ResponseEntity<AuthResponse> response = restTemplate.postForEntity(
                 "/auth/login",
-                new AuthRequest(username, password),
+                new AuthRequest(email, password),
                 AuthResponse.class
         );
         latestStatus = response.getStatusCode().value();
         latestAuthResponse = response.getBody();
         latestProfileResponse = null;
-        latestToken = latestAuthResponse.token();
+        latestToken = latestAuthResponse != null ? latestAuthResponse.token() : null;
     }
 
     @When("the user requests their profile")
@@ -86,10 +87,10 @@ public class AuthStepDefinitions {
 
     @Then("the response includes the username")
     public void theResponseIncludesTheUsername() {
-        String responseUsername = latestAuthResponse != null ? latestAuthResponse.username() : latestProfileResponse.username();
-        assertThat(responseUsername).isEqualTo(username);
+        String responseEmail = latestAuthResponse != null ? latestAuthResponse.email() : latestProfileResponse.email();
+        assertThat(responseEmail).isEqualTo(email);
     }
 
-    private record ProfileResponse(String username) {
+    private record ProfileResponse(String email) {
     }
 }

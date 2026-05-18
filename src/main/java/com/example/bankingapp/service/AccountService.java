@@ -21,9 +21,9 @@ public class AccountService {
     }
 
     // Get all accounts for the currently logged-in user
-    public List<AccountDTO> getMyAccounts(String username) {
-        AppUser user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+    public List<AccountDTO> getMyAccounts(String email) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
 
         return accountRepository.findByUser(user).stream()
                 .map(account -> new AccountDTO(

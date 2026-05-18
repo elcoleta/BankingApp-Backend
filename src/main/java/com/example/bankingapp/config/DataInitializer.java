@@ -12,10 +12,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 
-/**
- * Loads test data on startup for development purposes.
- * This runs once when the application starts.
- */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
@@ -36,14 +32,31 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Only seed if no users exist
         if (userRepository.count() > 0) return;
 
-        // Create test customer
-        AppUser customer = new AppUser("achraf", passwordEncoder.encode("password123"));
+        AppUser employee = new AppUser(
+                "Bank",
+                "Employee",
+                "employee@bank.com",
+                "000000001",
+                "+31600000001",
+                passwordEncoder.encode("employee123")
+        );
+        employee.setStatus(AppUser.Status.APPROVED);
+        employee.setRole(AppUser.Role.EMPLOYEE);
+        userRepository.save(employee);
+
+        AppUser customer = new AppUser(
+                "Achraf",
+                "El Moussaoui",
+                "achraf@example.com",
+                "123456789",
+                "+31612345678",
+                passwordEncoder.encode("password123")
+        );
+        customer.setStatus(AppUser.Status.APPROVED);
         userRepository.save(customer);
 
-        // Create checking account for customer
         accountRepository.save(new Account(
                 "NL91INHO0417164300",
                 "CHECKING",
@@ -54,7 +67,6 @@ public class DataInitializer implements CommandLineRunner {
                 customer
         ));
 
-        // Create savings account for customer
         accountRepository.save(new Account(
                 "NL91INHO0417164301",
                 "SAVINGS",
@@ -65,7 +77,6 @@ public class DataInitializer implements CommandLineRunner {
                 customer
         ));
 
-        // Create test transactions
         transactionRepository.save(new Transaction(
                 "NL91INHO0417164300", "NL20INGB0001234567",
                 250.00, LocalDateTime.now().minusDays(1), "Rent payment"));
@@ -82,6 +93,8 @@ public class DataInitializer implements CommandLineRunner {
                 "NL91INHO0417164301", "NL20INGB0001234567",
                 150.00, LocalDateTime.now().minusDays(7), "Subscription"));
 
-        System.out.println("✓ Test data loaded: user 'achraf' with 2 accounts and 4 transactions");
+        System.out.println("Test data loaded:");
+        System.out.println("  employee@bank.com / employee123 (EMPLOYEE)");
+        System.out.println("  achraf@example.com / password123 (CUSTOMER, APPROVED)");
     }
 }
