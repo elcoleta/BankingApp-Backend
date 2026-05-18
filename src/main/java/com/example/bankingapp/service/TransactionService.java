@@ -25,10 +25,9 @@ public class TransactionService {
         this.userRepository = userRepository;
     }
 
-    public List<TransactionDTO> getMyTransactions(String username) {
-        // 1. Find the logged-in user
-        AppUser user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+    public List<TransactionDTO> getMyTransactions(String email) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
 
         // 2. Get all IBANs belonging to this user
         List<String> myIbans = accountRepository.findByUser(user)

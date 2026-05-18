@@ -6,6 +6,8 @@ import java.util.Map;
 import com.example.bankingapp.dto.ApiError;
 import com.example.bankingapp.dto.AuthRequest;
 import com.example.bankingapp.dto.AuthResponse;
+import com.example.bankingapp.dto.RegisterRequest;
+import com.example.bankingapp.dto.RegisterResponse;
 import com.example.bankingapp.exception.AuthException;
 import com.example.bankingapp.service.AuthService;
 import jakarta.validation.Valid;
@@ -31,8 +33,10 @@ public class AuthController {
     }
 
     @PostMapping("/auth/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody AuthRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new RegisterResponse("Registration successful. Your account is pending approval."));
     }
 
     @PostMapping("/auth/login")
@@ -42,7 +46,7 @@ public class AuthController {
 
     @GetMapping("/api/me")
     public Map<String, String> me(Principal principal) {
-        return Map.of("username", principal.getName());
+        return Map.of("email", principal.getName());
     }
 
     @ExceptionHandler(AuthException.class)
@@ -51,7 +55,11 @@ public class AuthController {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidationException() {
-        return ResponseEntity.badRequest().body(new ApiError("Username and password are required"));
+    public ResponseEntity<ApiError> handleValidationException(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(e -> e.getDefaultMessage())
+                .orElse("Invalid input");
+        return ResponseEntity.badRequest().body(new ApiError(message));
     }
 }

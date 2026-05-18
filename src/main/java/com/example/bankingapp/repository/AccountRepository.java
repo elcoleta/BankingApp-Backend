@@ -8,6 +8,7 @@ import java.util.List;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
 
-    // Get all accounts belonging to a user
     List<Account> findByUser(AppUser user);
+
+    boolean existsByIban(String iban);
 }
