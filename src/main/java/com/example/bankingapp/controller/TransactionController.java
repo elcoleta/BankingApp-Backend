@@ -1,11 +1,12 @@
 package com.example.bankingapp.controller;
 
 import com.example.bankingapp.dto.TransactionDTO;
+import com.example.bankingapp.dto.TransferRequest;
 import com.example.bankingapp.service.TransactionService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
@@ -20,10 +21,14 @@ public class TransactionController {
         this.transactionService = transactionService;
     }
 
-    // GET /transactions/my — returns all transactions for the logged-in user
     @GetMapping("/my")
     public ResponseEntity<List<TransactionDTO>> getMyTransactions(Principal principal) {
-        List<TransactionDTO> transactions = transactionService.getMyTransactions(principal.getName());
-        return ResponseEntity.ok(transactions);
+        return ResponseEntity.ok(transactionService.getMyTransactions(principal.getName()));
+    }
+
+    @PostMapping("/transfer")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TransactionDTO transfer(@RequestBody @Valid TransferRequest request, Principal principal) {
+        return transactionService.transfer(principal.getName(), request);
     }
 }

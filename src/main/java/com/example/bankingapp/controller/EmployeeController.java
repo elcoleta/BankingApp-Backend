@@ -2,18 +2,13 @@ package com.example.bankingapp.controller;
 
 import com.example.bankingapp.dto.CustomerAccountDTO;
 import com.example.bankingapp.dto.CustomerDTO;
+import com.example.bankingapp.dto.TransactionDTO;
 import com.example.bankingapp.service.EmployeeService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/employees")
@@ -31,8 +26,7 @@ public class EmployeeController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return employeeService.getAllAccounts(
-                PageRequest.of(page, size, Sort.by("id").ascending())
-        );
+                PageRequest.of(page, size, Sort.by("id").ascending()));
     }
 
     @PostMapping("/customers/{id}/approve")
@@ -47,7 +41,15 @@ public class EmployeeController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return employeeService.getPendingCustomersWithoutAccounts(
-                PageRequest.of(page, size, Sort.by("id").ascending())
-        );
+                PageRequest.of(page, size, Sort.by("id").ascending()));
+    }
+
+    @GetMapping("/transactions")
+    public Page<TransactionDTO> getAllTransactions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size
+    ) {
+        return employeeService.getAllTransactions(
+                PageRequest.of(page, size, Sort.by("timestamp").descending()));
     }
 }
