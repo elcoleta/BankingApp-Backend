@@ -2,11 +2,13 @@ package com.example.bankingapp.service;
 
 import com.example.bankingapp.dto.CustomerAccountDTO;
 import com.example.bankingapp.dto.CustomerDTO;
+import com.example.bankingapp.dto.TransactionDTO;
 import com.example.bankingapp.exception.ResourceNotFoundException;
 import com.example.bankingapp.model.Account;
 import com.example.bankingapp.model.AppUser;
 import com.example.bankingapp.repository.AccountRepository;
 import com.example.bankingapp.repository.AppUserRepository;
+import com.example.bankingapp.repository.TransactionRepository;
 import com.example.bankingapp.util.IbanGenerator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,10 +20,14 @@ public class EmployeeService {
 
     private final AccountRepository accountRepository;
     private final AppUserRepository userRepository;
+    private final TransactionRepository transactionRepository;
 
-    public EmployeeService(AccountRepository accountRepository, AppUserRepository userRepository) {
+    public EmployeeService(AccountRepository accountRepository,
+                           AppUserRepository userRepository,
+                           TransactionRepository transactionRepository) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     public Page<CustomerAccountDTO> getAllAccounts(Pageable pageable) {
@@ -30,6 +36,12 @@ public class EmployeeService {
 
     public Page<CustomerDTO> getPendingCustomersWithoutAccounts(Pageable pageable) {
         return userRepository.findPendingCustomersWithoutAccounts(pageable).map(this::toCustomerDTO);
+    }
+
+    public Page<TransactionDTO> getAllTransactions(Pageable pageable) {
+        return transactionRepository.findAllByOrderByTimestampDesc(pageable)
+                .map(t -> new TransactionDTO(t.getId(), t.getFromIban(), t.getToIban(),
+                        t.getAmount(), t.getTimestamp(), t.getDescription()));
     }
 
     @Transactional
