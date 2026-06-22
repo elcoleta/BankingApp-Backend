@@ -15,6 +15,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByFromIbanInOrToIbanInOrderByTimestampDesc(
             List<String> fromIbans, List<String> toIbans);
 
+    Page<Transaction> findByFromIbanInOrToIbanInOrderByTimestampDesc(
+            List<String> fromIbans, List<String> toIbans, Pageable pageable);
+
     @Query("SELECT t FROM Transaction t WHERE (t.fromIban IN :ibans OR t.toIban IN :ibans) AND t.timestamp BETWEEN :from AND :to ORDER BY t.timestamp DESC")
     List<Transaction> findByIbansAndDateRange(
             @Param("ibans") List<String> ibans,

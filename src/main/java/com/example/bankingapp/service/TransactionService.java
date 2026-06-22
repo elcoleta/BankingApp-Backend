@@ -2,7 +2,7 @@ package com.example.bankingapp.service;
 
 import com.example.bankingapp.dto.TransactionDTO;
 import com.example.bankingapp.dto.TransferRequest;
-import com.example.bankingapp.exception.AuthException;
+import com.example.bankingapp.exception.ForbiddenException;
 import com.example.bankingapp.exception.ResourceNotFoundException;
 import com.example.bankingapp.model.Account;
 import com.example.bankingapp.model.AppUser;
@@ -34,53 +34,34 @@ public class TransactionService {
         this.userRepository = userRepository;
     }
 
-    public List<TransactionDTO> getMyTransactions(String email) {
-        AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
-
+    public Page<TransactionDTO> getMyTransactions(String email, Pageable pageable) {
+        AppUser user = findUser(email);
         List<String> myIbans = accountRepository.findByUser(user).stream()
                 .map(Account::getIban)
                 .toList();
-
         return transactionRepository
-                .findByFromIbanInOrToIbanInOrderByTimestampDesc(myIbans, myIbans)
-                .stream()
-                .map(this::toDTO)
-                .toList();
+                .findByFromIbanInOrToIbanInOrderByTimestampDesc(myIbans, myIbans, pageable)
+                .map(this::toDTO);
     }
 
     @Transactional
     public TransactionDTO transfer(String email, TransferRequest request) {
-        AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        Account fromAccount = accountRepository.findByIban(request.fromIban())
-                .orElseThrow(() -> new ResourceNotFoundException("Source account not found: " + request.fromIban()));
-
-        if (!fromAccount.getUser().getId().equals(user.getId())) {
-            throw new AuthException("You do not own the source account");
+        if (request.fromIban().equals(request.toIban())) {
+            throw new IllegalArgumentException("Source and destination accounts must be different");
         }
 
-        Account toAccount = accountRepository.findByIban(request.toIban())
-                .orElseThrow(() -> new ResourceNotFoundException("Destination account not found: " + request.toIban()));
+        AppUser user = findUser(email);
+
+        Account fromAccount = findAccount(request.fromIban());
+        validateOwner(fromAccount, user);
+        validateActive(fromAccount);
+
+        Account toAccount = findAccount(request.toIban());
+        validateActive(toAccount);
 
         double amount = request.amount();
-
-        // Minimum balance floor: balance after transfer must not drop below absoluteTransferLimit
-        if (fromAccount.getBalance() - amount < fromAccount.getAbsoluteTransferLimit()) {
-            throw new IllegalArgumentException(String.format(
-                    "Transfer would bring balance below the minimum floor of €%.2f",
-                    fromAccount.getAbsoluteTransferLimit()));
-        }
-
-        // Daily limit: sum of today's outgoing transfers + new amount must not exceed dailyTransferLimit
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        double todayOutgoing = transactionRepository.sumTodayOutgoing(request.fromIban(), startOfDay);
-        if (todayOutgoing + amount > fromAccount.getDailyTransferLimit()) {
-            throw new IllegalArgumentException(String.format(
-                    "Daily transfer limit exceeded. Already transferred €%.2f today, limit is €%.2f",
-                    todayOutgoing, fromAccount.getDailyTransferLimit()));
-        }
+        validateMinimumBalance(fromAccount, amount);
+        validateDailyLimit(fromAccount, amount);
 
         fromAccount.setBalance(fromAccount.getBalance() - amount);
         toAccount.setBalance(toAccount.getBalance() + amount);
@@ -90,59 +71,82 @@ public class TransactionService {
         String description = (request.description() != null && !request.description().isBlank())
                 ? request.description() : "Transfer";
 
-        Transaction tx = transactionRepository.save(
-                new Transaction(request.fromIban(), request.toIban(), amount, LocalDateTime.now(), description));
-
-        return toDTO(tx);
+        return toDTO(transactionRepository.save(
+                new Transaction(request.fromIban(), request.toIban(), amount, LocalDateTime.now(), description)));
     }
 
     @Transactional
     public TransactionDTO deposit(String email, String iban, double amount) {
-        Account account = accountRepository.findByIban(iban)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + iban));
-
-        AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        if (!account.getUser().getId().equals(user.getId())) {
-            throw new AuthException("You do not own this account");
-        }
+        Account account = findAccount(iban);
+        validateOwner(account, findUser(email));
+        validateActive(account);
 
         account.setBalance(account.getBalance() + amount);
         accountRepository.save(account);
 
-        Transaction tx = transactionRepository.save(
-                new Transaction("ATM", iban, amount, LocalDateTime.now(), "ATM Deposit"));
-        return toDTO(tx);
+        return toDTO(transactionRepository.save(
+                new Transaction("ATM", iban, amount, LocalDateTime.now(), "ATM Deposit")));
     }
 
     @Transactional
     public TransactionDTO withdraw(String email, String iban, double amount) {
-        Account account = accountRepository.findByIban(iban)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + iban));
-
-        AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        if (!account.getUser().getId().equals(user.getId())) {
-            throw new AuthException("You do not own this account");
-        }
-
-        if (account.getBalance() - amount < 0) {
-            throw new IllegalArgumentException(String.format(
-                    "Insufficient funds. Available balance: €%.2f", account.getBalance()));
-        }
+        Account account = findAccount(iban);
+        validateOwner(account, findUser(email));
+        validateActive(account);
+        validateMinimumBalance(account, amount);
+        validateDailyLimit(account, amount);
 
         account.setBalance(account.getBalance() - amount);
         accountRepository.save(account);
 
-        Transaction tx = transactionRepository.save(
-                new Transaction(iban, "ATM", amount, LocalDateTime.now(), "ATM Withdrawal"));
-        return toDTO(tx);
+        return toDTO(transactionRepository.save(
+                new Transaction(iban, "ATM", amount, LocalDateTime.now(), "ATM Withdrawal")));
     }
 
     public Page<TransactionDTO> getAllTransactions(Pageable pageable) {
         return transactionRepository.findAllByOrderByTimestampDesc(pageable).map(this::toDTO);
+    }
+
+    // --- private helpers ---
+
+    private AppUser findUser(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+    }
+
+    private Account findAccount(String iban) {
+        return accountRepository.findByIban(iban)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + iban));
+    }
+
+    private void validateOwner(Account account, AppUser user) {
+        if (!account.getUser().getEmail().equals(user.getEmail())) {
+            throw new ForbiddenException("You do not own this account");
+        }
+    }
+
+    private void validateActive(Account account) {
+        if (!account.isActive()) {
+            throw new IllegalArgumentException("Account " + account.getIban() + " is not active");
+        }
+    }
+
+    private void validateMinimumBalance(Account account, double amount) {
+        if (account.getBalance() - amount < account.getAbsoluteTransferLimit()) {
+            throw new IllegalArgumentException(String.format(
+                    "Insufficient funds. Balance after operation (€%.2f) would fall below the minimum floor of €%.2f",
+                    account.getBalance() - amount, account.getAbsoluteTransferLimit()));
+        }
+    }
+
+    private void validateDailyLimit(Account account, double amount) {
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        double todayOutgoing = transactionRepository.sumTodayOutgoing(account.getIban(), startOfDay);
+        if (todayOutgoing + amount > account.getDailyTransferLimit()) {
+            throw new IllegalArgumentException(String.format(
+                    "Daily limit exceeded. Already sent €%.2f today, limit is €%.2f",
+                    todayOutgoing, account.getDailyTransferLimit()));
+        }
     }
 
     private TransactionDTO toDTO(Transaction t) {
